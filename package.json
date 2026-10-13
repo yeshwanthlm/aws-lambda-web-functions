@@ -1,0 +1,17 @@
+{
+  "name": "lambda-web-functions-demo",
+  "version": "1.0.0",
+  "description": "A Lambda Web Function demo: a plain Node.js HTTP server you can run locally and deploy with one command.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test:local": "node test-local.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
