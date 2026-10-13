@@ -1,73 +1,73 @@
-# Lambda Web Functions — live demo
+# Lambda Web Functions — Hello World
 
-A Lambda Web Function is **just an HTTP server that listens on a port**. No handler
-signature, no adapter around your framework. The same `server.js` runs locally and
-on Lambda — on Lambda the platform sets `PORT` and routes HTTP requests straight to
-your server.
+A minimal Express server you can deploy to **AWS Lambda Web Functions** with a
+single command. No adapters, no wrappers — the same code runs locally and on Lambda.
 
-This repo serves a single-page **dashboard** (`public/index.html`) from the Web
-Function itself, with three interactive panels that make the Web Functions story
-visible to an audience.
+```js
+import express from 'express';
 
-## Run it
+const app = express();
+const [host, port] = process.env.AWS_LAMBDA_HTTP_ENDPOINT.split(':');
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Hello from Lambda Web Functions!' });
+});
+
+app.listen(port, host);
+```
+
+The only Lambda-specific detail: Lambda sets `AWS_LAMBDA_HTTP_ENDPOINT` to the
+host and port your server must listen on. (This repo falls back to
+`127.0.0.1:3000` locally so you don't have to set it by hand.)
+
+## Run locally
 
 ```bash
 npm install
-npm start          # http://localhost:3000  ← open this on stage
+npm start           # http://127.0.0.1:3000
+curl 127.0.0.1:3000
+# {"message":"Hello from Lambda Web Functions!"}
 ```
 
-Automated checks (starts server, exercises the API, asserts behavior, exits):
+Or exactly as the launch blog shows it:
 
 ```bash
-npm run test:local
+AWS_LAMBDA_HTTP_ENDPOINT=127.0.0.1:3000 node index.js
 ```
 
-## The three "aha" moments (left → right on the dashboard)
+## Deploy to AWS
 
-| Panel | What the audience sees | Why it matters |
-|---|---|---|
-| **Streaming (SSE)** | Click *Stream a response* → tokens appear one at a time, like an LLM typing. | Your server streams results to users as they're ready. Native response streaming. |
-| **Concurrency** | Click *Fire 8 concurrent requests* → 8 lanes fill together; the burst finishes in ~1.2s, not ~10s. | One **warm environment** serves many requests in parallel. Cold starts drop by orders of magnitude. |
-| **Active-CPU billing** | The green (CPU) bar stays tiny while the gray (idle wait) bar grows. | You pay for **active CPU + memory**, not for time spent waiting on a DB or downstream call. |
-
-The top bar shows the live **env id**, region, uptime, total requests, and in-flight
-count. Open the page in two browser tabs — same env id = same warm environment
-serving both.
-
-## Suggested 3-minute stage script
-
-1. **Set up (15s):** "A Web Function is just an HTTP server. Here's an Express app
-   listening on a port — the same code runs locally and on Lambda, no adapter."
-2. **Streaming (30s):** Click *Stream a response*. "Tokens reach the user as they're
-   produced. This is how you'd stream LLM output."
-3. **Concurrency (45s):** Click *Fire 8 concurrent requests*. "Each waits ~1.2s on a
-   downstream call. Serially that's ~10 seconds. Watch…" → finishes in ~1.2s. "One
-   warm environment, all eight in parallel."
-4. **Billing (30s):** Point at the bars. "Everything we just ran mostly *waited*.
-   You pay for the little green sliver of CPU, not the gray waiting. That's the
-   Web Functions pricing model."
-5. **Close (20s):** "Same Lambda you trust, now a primitive for HTTP."
-
-## Deploy to AWS (one command)
-
-Requires **AWS CLI v2.37.9+** (`aws lambda-web ...`).
+One command (requires AWS CLI v2.37.9+):
 
 ```bash
-# deploy this app's code and print the HTTPS endpoint:
-aws lambda-web deploy --name web-fn-demo --code . --entry-point server.js --create
-
-# or the built-in starter:
-aws lambda-web deploy --name hello-web --hello-world --create
+aws lambda-web deploy --name my-web-app --code .
 ```
 
-Useful flags: `--runtime nodejs24.x` (default), `--env KEY=VALUE` (repeatable),
-`--regions <list>` + `--auto-deployment-mode` for multi-Region serving,
-`--max-concurrency-per-environment`, `--rate-limit`, `--timeout-seconds`.
-Omit `--execution-role-arn` and the CLI creates one for you.
+The CLI bundles the source, creates the Web Function, publishes a revision,
+attaches an endpoint, and returns a live HTTPS URL in under a minute. Test it:
 
-Full reference: https://docs.aws.amazon.com/cli/latest/reference/lambda-web/deploy.html
+```bash
+curl https://<domain-id>.<shard-id>.lambda-web.us-east-1.on.aws/
+```
+
+### Serve multiple Regions (latency-based routing)
+
+```bash
+aws lambda-web deploy --name my-web-app --code . \
+    --regions us-east-1,eu-west-1,ap-northeast-1
+```
+
+Requests route to the closest Region through one global URL
+(`<domain-id>.lambda-web.global.on.aws`).
+
+### Fastest possible start (built-in starter)
+
+```bash
+aws lambda-web deploy --name hello-world --hello-world
+```
 
 ## Notes
 
-- Web Functions is **Node.js only**, zip-based, On-Demand only.
-- The whole contract is: **listen on `process.env.PORT`.**
+- Runs **Node.js 24 (nodejs24.x) on Arm64** on Lambda.
+- Available in us-east-1, us-east-2, us-west-2, ap-northeast-1, eu-west-1.
+- Re-running `deploy` publishes a new revision and points the endpoint at it.

@@ -1,12 +1,11 @@
 {
   "name": "lambda-web-functions-demo",
   "version": "1.0.0",
-  "description": "A Lambda Web Function demo: a plain Node.js HTTP server you can run locally and deploy with one command.",
+  "description": "A minimal Express server deployed as an AWS Lambda Web Function.",
   "type": "module",
-  "main": "server.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js",
-    "test:local": "node test-local.js"
+    "start": "AWS_LAMBDA_HTTP_ENDPOINT=127.0.0.1:3000 node index.js"
   },
   "dependencies": {
     "express": "^4.21.2"
